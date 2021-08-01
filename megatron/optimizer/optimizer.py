@@ -177,6 +177,9 @@ class FP16OptimizerWithFP16Params(MegatronOptimizer):
                                                                   param)
                         if hasattr(param, 'shared'):
                             main_param.shared = param.shared
+                        if hasattr(param, 'dp_comm'):
+                            main_param.dp_comm = param.dp_comm
+
                         # Replace the optimizer params with the new fp32 copy.
                         param_group['params'][i] = main_param
                         fp32_from_fp16_params_this_group.append(main_param)

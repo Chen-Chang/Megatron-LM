@@ -2,17 +2,23 @@
 
 # Runs the "345M" parameter model
 
-export RANK=0
-#export WORLD_SIZE=8
-export NNODES=1
-export NODE_RANK=$PADDLE_TRAINER_ID
-export GPUS_PER_NODE=8 
-export WORLD_SIZE=($GPUS_PER_NODE*$NNODES)
+GPUS_PER_NODE=2
+# Change for multinode config
+MASTER_ADDR=${PADDLE_TRAINERS}
+MASTER_PORT=${TRAINER_PORTS%%,*}
+NNODES=1
+NODE_RANK=$PADDLE_TRAINER_ID
+WORLD_SIZE=$(($GPUS_PER_NODE*$NNODES))
+
 DATA_PATH=./data/my-gpt2_text_document
-CHECKPOINT_PATH=./checkpoint
+CHECKPOINT_PATH=checkpoints/gpt2_345m
 
+DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
 
-python pretrain_gpt.py \
+python -m torch.distributed.launch $DISTRIBUTED_ARGS \
+       pretrain_gpt.py \
+       --tensor-model-parallel-size 1 \
+       --pipeline-model-parallel-size 1 \
        --num-layers 24 \
        --hidden-size 1024 \
        --num-attention-heads 16 \
@@ -31,17 +37,15 @@ python pretrain_gpt.py \
        --split 949,50,1 \
        --distributed-backend nccl \
        --lr 0.00015 \
-       --min-lr 1.0e-5 \
        --lr-decay-style cosine \
+       --min-lr 1.0e-5 \
        --weight-decay 1e-2 \
        --clip-grad 1.0 \
        --lr-warmup-fraction .01 \
        --checkpoint-activations \
-       --log-interval 100 \
-       --save-interval 10000 \
+       --log-interval 1 \
+       --save-interval 100000 \
        --eval-interval 1000 \
        --eval-iters 10 \
-	   --pipeline-model-parallel-size 2 \
-	   --tensor-model-parallel-size 2 \
-		 
+	   --fmoefy \
        #--fp16

@@ -31,6 +31,8 @@ from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
 
+from fmoe.megatron import fmoefy
+
 def model_provider():
     """Build the model."""
 
@@ -48,6 +50,8 @@ def model_provider():
                 num_tokentypes=0)
     else:
         model = GPTModel(num_tokentypes=0, parallel_output=True)
+
+    model = fmoefy(model, num_experts=4, hidden_hidden_size=1024)
 
     return model
 

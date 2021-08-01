@@ -35,20 +35,22 @@ from megatron import update_num_microbatches
 from megatron import mpu
 from megatron import print_rank_0
 from megatron import print_rank_last
-from megatron.checkpointing import load_checkpoint
-from megatron.checkpointing import save_checkpoint
+from fmoe.megatron.checkpoint import load_checkpoint
+from fmoe.megatron.checkpoint import save_checkpoint
 from megatron.model import FP16Module
 from megatron.optimizer import get_megatron_optimizer
 
 from megatron.initialize import initialize_megatron
 from megatron.initialize import write_args_to_tensorboard
 from megatron.learning_rates import AnnealingLR
-from megatron.model import DistributedDataParallel as LocalDDP
+#from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.model.realm_model import ICTBertModel
 from megatron.utils import check_adlr_autoresume_termination
 from megatron.data.data_loaders import build_pretraining_data_loader
 from megatron.utils import report_memory
 
+from fmoe.megatron import DistributedDataParallel as LocalDDP
+from fmoe.megatron import add_balance_log
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -101,6 +103,11 @@ def pretrain(train_valid_test_dataset_provider, model_provider,
 
     args = get_args()
     timers = get_timers()
+	
+    if args.fmoefy:
+        from fmoe.megatron import patch_forward_step, patch_model_provider
+        forward_step_fun = patch_forward_step(forward_step_func)
+        model_provider = patch_model_provider(model_provider)
 
     # Model, optimizer, and learning rate.
     timers('model and optimizer').start()
@@ -643,7 +650,7 @@ def train_step(forward_step_func, data_iterator,
 
 
 def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
-                 loss_scale, report_memory_flag, skipped_iter):
+                 loss_scale, report_memory_flag, skipped_iter, model):
     """Log training information such as losses, timing, ...."""
     args = get_args()
     timers = get_timers()
@@ -722,9 +729,12 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
                               args.consumed_train_samples)
         writer.add_scalar('loss-scale', loss_scale, iteration)
         writer.add_scalar('loss-scale vs samples', loss_scale,
-                          args.consumed_train_samples)
+                        args.consumed_train_samples)
         timers.write(timers_to_log, writer, iteration,
                      normalizer=total_iterations)
+
+    if args.fmoefy and args.balance_strategy and args.balance_strategy != 'naive':
+        add_balance_log(model, writer, iteration)
 
     if iteration % args.log_interval == 0:
         elapsed_time = timers('interval time').elapsed()
@@ -816,7 +826,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
         report_memory_flag = training_log(loss_dict, total_loss_dict,
                                           optimizer.param_groups[0]['lr'],
                                           iteration, loss_scale,
-                                          report_memory_flag, skipped_iter)
+                                          report_memory_flag, skipped_iter, model)
 
         # Autoresume
         if args.adlr_autoresume and \

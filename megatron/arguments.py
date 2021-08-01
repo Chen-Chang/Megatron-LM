@@ -20,6 +20,7 @@ import os
 
 import torch
 from megatron import fused_kernels
+from fmoe.megatron import add_fmoe_args as _add_fmoe_args
 
 def parse_args(extra_args_provider=None, defaults={},
                ignore_unknown_args=False):
@@ -40,6 +41,7 @@ def parse_args(extra_args_provider=None, defaults={},
     parser = _add_data_args(parser)
     parser = _add_autoresume_args(parser)
     parser = _add_realm_args(parser)
+    parser = _add_fmoe_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
