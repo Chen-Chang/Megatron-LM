@@ -707,6 +707,11 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
     add_to_logging('optimizer-copy-main-to-model-params')
     add_to_logging('optimizer')
     add_to_logging('batch-generator')
+    add_to_logging('Prepare Forward')
+    add_to_logging('Gate Computation')
+    add_to_logging('MOEScatter')
+    add_to_logging('Expert Computation')
+    add_to_logging('MOEGather')
 
     # Calculate batch size.
     batch_size = args.micro_batch_size * args.data_parallel_size * \
