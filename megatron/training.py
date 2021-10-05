@@ -709,9 +709,17 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
     add_to_logging('batch-generator')
     add_to_logging('Prepare Forward')
     add_to_logging('Gate Computation')
+    add_to_logging('Limit_By_Capacity')
+    add_to_logging('Prune_Gate_By_Cap')
+    add_to_logging('Random Routing')
+    add_to_logging('Base Operation')
+    add_to_logging('AllGather in Limit')
     add_to_logging('MOEScatter')
     add_to_logging('Expert Computation')
     add_to_logging('MOEGather')
+    add_to_logging('Score BMM')
+    add_to_logging('AllReduce')
+    add_to_logging('All Gather')
 
     # Calculate batch size.
     batch_size = args.micro_batch_size * args.data_parallel_size * \
